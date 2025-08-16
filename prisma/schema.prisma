@@ -1,0 +1,168 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Scholarship {
+  id              String   @id @default(cuid())
+  name            String
+  sourceUrl       String   @unique
+  domain          String
+  country         String
+  degreeLevels    String[]
+  fields          String[]
+  deadline        DateTime
+  stipend         Int?
+  tuitionCovered  Boolean  @default(false)
+  travelSupport   Boolean  @default(false)
+  eligibilityText String   @db.Text
+  requirements    String[]
+  tags            String[]
+  confidence      Float    @default(1.0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Optimized indexes for common query patterns
+  @@index([deadline, confidence]) // For deadline + confidence sorting
+  @@index([country, deadline])    // For country filtering with deadline
+  @@index([fields])               // For field-based searches (GIN index for arrays)
+  @@index([degreeLevels])         // For degree level filtering (GIN index for arrays)
+  @@index([domain, createdAt])    // For domain-based queries with recency
+  @@index([stipend, deadline])    // For stipend filtering with deadline sorting
+  @@index([confidence, deadline]) // For high-confidence scholarships with deadline
+  @@index([createdAt])            // For recent scholarships
+  @@index([updatedAt])            // For recently updated scholarships
+  @@map("scholarships")
+}
+
+model UserProfile {
+  id             String   @id @default(cuid())
+  nationality    String
+  degreeTarget   String
+  fieldKeywords  String[]
+  specialStatus  String[]
+  constraints    Json
+  gpa            Float?
+  languageTests  Json?
+  publications   Int?
+  workExperience Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  // Relations
+  searches ProfileSearch[]
+  
+  @@map("user_profiles")
+}
+
+model ProfileSearch {
+  id        String      @id @default(cuid())
+  profileId String
+  query     Json
+  results   Json
+  cacheKey  String      @unique
+  createdAt DateTime    @default(now())
+  expiresAt DateTime
+  
+  // Relations
+  profile   UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  
+  // Optimized indexes for cache operations
+  @@index([cacheKey, expiresAt])  // For cache lookup with expiration check
+  @@index([profileId, createdAt]) // For profile's recent searches
+  @@index([expiresAt])            // For cleanup of expired searches
+  @@index([profileId])            // For profile-based queries
+  @@map("profile_searches")
+}
+
+model IngestionSource {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  type        String   // 'google_search', 'rss', 'manual'
+  url         String?
+  domain      String?
+  isActive    Boolean  @default(true)
+  lastRunAt   DateTime?
+  nextRunAt   DateTime?
+  config      Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  rawData IngestionRawData[]
+  
+  @@map("ingestion_sources")
+}
+
+model IngestionRawData {
+  id         String           @id @default(cuid())
+  sourceId   String
+  url        String
+  urlHash    String           @unique
+  title      String?
+  content    String           @db.Text
+  metadata   Json             @default("{}")
+  status     String           @default("pending") // 'pending', 'processed', 'failed'
+  createdAt  DateTime         @default(now())
+  processedAt DateTime?
+  
+  // Relations
+  source     IngestionSource  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  
+  // Indexes
+  @@index([sourceId])
+  @@index([status])
+  @@index([urlHash])
+  @@index([createdAt])
+  @@map("ingestion_raw_data")
+}
+
+model AdminUser {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  role      String   @default("admin") // 'admin', 'moderator'
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("admin_users")
+}
+
+model SystemMetrics {
+  id        String   @id @default(cuid())
+  metric    String   // 'searches_daily', 'api_calls', 'error_rate', etc.
+  value     Float
+  metadata  Json     @default("{}")
+  timestamp DateTime @default(now())
+  
+  // Indexes for metrics queries
+  @@index([metric, timestamp])    // For metric-specific time series queries
+  @@index([timestamp])            // For time-based queries
+  @@index([metric, createdAt])    // For recent metrics by type
+  @@map("system_metrics")
+}
+
+model UserSubscription {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  plan          String   // 'free', 'premium'
+  status        String   // 'active', 'cancelled', 'expired'
+  stripeId      String?  @unique
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  cancelAtPeriodEnd  Boolean @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([status])
+  @@map("user_subscriptions")
+}
