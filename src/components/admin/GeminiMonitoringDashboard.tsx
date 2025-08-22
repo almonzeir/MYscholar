@@ -1,12 +1,10 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import Card from '@/components/ui/Card'
+import Chip from '@/components/ui/Chip'
+import Button from '@/components/ui/Button'
+import Progress from '@/components/ui/Progress'
 import { ErrorBoundary } from '@/components/error/ErrorBoundary'
 import { useError } from '@/components/error/ErrorProvider'
 import { 
@@ -256,94 +254,87 @@ const GeminiMonitoringDashboard: React.FC = () => {
       {/* Status Overview */}
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Service Status</p>
-                  <div className="flex items-center mt-1">
-                    {getStatusIcon(stats.status)}
-                    <span className={`ml-2 font-semibold capitalize ${getStatusColor(stats.status)}`}>
-                      {stats.status}
-                    </span>
-                  </div>
+          <Card className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Service Status</p>
+                <div className="flex items-center mt-1">
+                  {getStatusIcon(stats.status)}
+                  <span className={`ml-2 font-semibold capitalize ${getStatusColor(stats.status)}`}>
+                    {stats.status}
+                  </span>
                 </div>
               </div>
-            </CardContent>
+            </div>
           </Card>
 
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Requests Today</p>
-                  <p className="text-2xl font-bold text-blue-600">
-                    {formatNumber(stats.usage.requestsToday)}
-                  </p>
-                </div>
-                <TrendingUp className="h-8 w-8 text-blue-600" />
+          <Card className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Requests Today</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {formatNumber(stats.usage.requestsToday)}
+                </p>
               </div>
-            </CardContent>
+              <TrendingUp className="h-8 w-8 text-blue-600" />
+            </div>
           </Card>
 
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Tokens Used</p>
-                  <p className="text-2xl font-bold text-purple-600">
-                    {formatNumber(stats.usage.tokensUsed)}
-                  </p>
-                </div>
-                <Zap className="h-8 w-8 text-purple-600" />
+          <Card className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Tokens Used</p>
+                <p className="text-2xl font-bold text-purple-600">
+                  {formatNumber(stats.usage.tokensUsed)}
+                </p>
               </div>
-            </CardContent>
+              <Zap className="h-8 w-8 text-purple-600" />
+            </div>
           </Card>
 
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Quota Remaining</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {formatNumber(stats.usage.remainingQuota)}
-                  </p>
-                </div>
-                <Database className="h-8 w-8 text-green-600" />
+          <Card className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Quota Remaining</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {formatNumber(stats.usage.remainingQuota)}
+                </p>
               </div>
-            </CardContent>
+              <Database className="h-8 w-8 text-green-600" />
+            </div>
           </Card>
         </div>
       )}
 
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="scholarships">Live Scholarships</TabsTrigger>
-          <TabsTrigger value="performance">Performance</TabsTrigger>
-          <TabsTrigger value="usage">Usage Details</TabsTrigger>
-          <TabsTrigger value="health">Health Checks</TabsTrigger>
-        </TabsList>
+      <div className="space-y-4">
+        {/* Tab Navigation */}
+        <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+          <button className="px-3 py-2 text-sm font-medium bg-white text-gray-900 rounded-md shadow-sm">Overview</button>
+          <button className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900">Live Scholarships</button>
+          <button className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900">Performance</button>
+          <button className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900">Usage Details</button>
+          <button className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900">Health Checks</button>
+        </div>
 
-        <TabsContent value="overview" className="space-y-4">
+        <div className="space-y-4">
           {stats && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Service Information */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
+              <Card className="p-6">
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold flex items-center">
                     <Settings className="h-5 w-5 mr-2" />
                     Service Information
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
+                  </h3>
+                </div>
+                <div className="space-y-4">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Service:</span>
                     <span className="font-medium">{stats.service}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Version:</span>
-                    <Badge variant="outline">{stats.version}</Badge>
+                    <Chip variant="outline">{stats.version}</Chip>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Last Updated:</span>
@@ -355,24 +346,24 @@ const GeminiMonitoringDashboard: React.FC = () => {
                     <span className="text-gray-600 block mb-2">Capabilities:</span>
                     <div className="flex flex-wrap gap-2">
                       {stats.capabilities.map((capability, index) => (
-                        <Badge key={index} variant="secondary" className="text-xs">
+                        <Chip key={index} variant="secondary" className="text-xs">
                           {capability}
-                        </Badge>
+                        </Chip>
                       ))}
                     </div>
                   </div>
-                </CardContent>
+                </div>
               </Card>
 
               {/* Rate Limiting */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
+              <Card className="p-6">
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold flex items-center">
                     <Clock className="h-5 w-5 mr-2" />
                     Rate Limiting
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
+                  </h3>
+                </div>
+                <div className="space-y-4">
                   <div>
                     <div className="flex justify-between mb-2">
                       <span className="text-sm text-gray-600">Requests This Minute</span>
@@ -391,22 +382,22 @@ const GeminiMonitoringDashboard: React.FC = () => {
                       {new Date(stats.usage.rateLimitStatus.resetTime).toLocaleTimeString()}
                     </span>
                   </div>
-                </CardContent>
+                </div>
               </Card>
             </div>
           )}
-        </TabsContent>
+        </div>
 
-        <TabsContent value="scholarships" className="space-y-4">
+        <div className="space-y-4">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-lg font-semibold">Live Scholarship Database</h3>
               <p className="text-gray-600">Real-time view of available scholarships in the system</p>
             </div>
             <div className="flex items-center space-x-2">
-              <Badge variant="outline">
+              <Chip variant="outline">
                 {scholarships.length} scholarships
-              </Badge>
+              </Chip>
               {scholarshipsLoading && (
                 <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
               )}
@@ -415,8 +406,7 @@ const GeminiMonitoringDashboard: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
             {scholarships.map((scholarship) => (
-              <Card key={scholarship.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
+              <Card key={scholarship.id} className="hover:shadow-md transition-shadow p-4">
                   <div className="space-y-3">
                     <div>
                       <h4 className="font-semibold text-sm line-clamp-2">
@@ -429,17 +419,17 @@ const GeminiMonitoringDashboard: React.FC = () => {
                     
                     <div className="flex flex-wrap gap-1">
                       {scholarship.degreeLevels.slice(0, 2).map((level, index) => (
-                        <Badge key={index} variant="secondary" className="text-xs">
+                        <Chip key={index} variant="secondary" className="text-xs">
                           {level}
-                        </Badge>
+                        </Chip>
                       ))}
                     </div>
                     
                     <div className="flex flex-wrap gap-1">
                       {scholarship.fields.slice(0, 2).map((field, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
+                        <Chip key={index} variant="outline" className="text-xs">
                           {field}
-                        </Badge>
+                        </Chip>
                       ))}
                     </div>
                     
@@ -449,14 +439,14 @@ const GeminiMonitoringDashboard: React.FC = () => {
                       </span>
                       <div className="flex items-center space-x-1">
                         {scholarship.tuitionCovered && (
-                          <Badge variant="default" className="text-xs bg-green-100 text-green-800">
+                          <Chip variant="default" className="text-xs bg-green-100 text-green-800">
                             Tuition
-                          </Badge>
+                          </Chip>
                         )}
                         {scholarship.stipend && (
-                          <Badge variant="default" className="text-xs bg-blue-100 text-blue-800">
+                          <Chip variant="default" className="text-xs bg-blue-100 text-blue-800">
                             €{scholarship.stipend}
-                          </Badge>
+                          </Chip>
                         )}
                       </div>
                     </div>
@@ -474,14 +464,13 @@ const GeminiMonitoringDashboard: React.FC = () => {
                       
                       <div className="flex flex-wrap gap-1">
                         {scholarship.tags.slice(0, 2).map((tag, index) => (
-                          <Badge key={index} variant="outline" className="text-xs">
+                          <Chip key={index} variant="outline" className="text-xs">
                             {tag}
-                          </Badge>
+                          </Chip>
                         ))}
                       </div>
                     </div>
                   </div>
-                </CardContent>
               </Card>
             ))}
           </div>
@@ -501,71 +490,63 @@ const GeminiMonitoringDashboard: React.FC = () => {
               </Button>
             </div>
           )}
-        </TabsContent>
+        </div>
 
-        <TabsContent value="performance" className="space-y-4">
+        <div className="space-y-4">
           {metrics && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card>
-                <CardContent className="p-4">
-                  <div className="text-center">
-                    <p className="text-sm font-medium text-gray-600">Avg Response Time</p>
-                    <p className="text-2xl font-bold text-blue-600">
-                      {Math.round(metrics.averageResponseTime)}ms
-                    </p>
-                  </div>
-                </CardContent>
+              <Card className="p-4">
+                <div className="text-center">
+                  <p className="text-sm font-medium text-gray-600">Avg Response Time</p>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {Math.round(metrics.averageResponseTime)}ms
+                  </p>
+                </div>
               </Card>
 
-              <Card>
-                <CardContent className="p-4">
-                  <div className="text-center">
-                    <p className="text-sm font-medium text-gray-600">Success Rate</p>
-                    <p className="text-2xl font-bold text-green-600">
-                      {formatPercentage(metrics.successRate)}
-                    </p>
-                  </div>
-                </CardContent>
+              <Card className="p-4">
+                <div className="text-center">
+                  <p className="text-sm font-medium text-gray-600">Success Rate</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {formatPercentage(metrics.successRate)}
+                  </p>
+                </div>
               </Card>
 
-              <Card>
-                <CardContent className="p-4">
-                  <div className="text-center">
-                    <p className="text-sm font-medium text-gray-600">Cache Hit Rate</p>
-                    <p className="text-2xl font-bold text-purple-600">
-                      {formatPercentage(metrics.cacheHitRate)}
-                    </p>
-                  </div>
-                </CardContent>
+              <Card className="p-4">
+                <div className="text-center">
+                  <p className="text-sm font-medium text-gray-600">Cache Hit Rate</p>
+                  <p className="text-2xl font-bold text-purple-600">
+                    {formatPercentage(metrics.cacheHitRate)}
+                  </p>
+                </div>
               </Card>
 
-              <Card>
-                <CardContent className="p-4">
-                  <div className="text-center">
-                    <p className="text-sm font-medium text-gray-600">Error Rate</p>
-                    <p className="text-2xl font-bold text-red-600">
-                      {formatPercentage(metrics.errorRate)}
-                    </p>
-                  </div>
-                </CardContent>
+              <Card className="p-4">
+                <div className="text-center">
+                  <p className="text-sm font-medium text-gray-600">Error Rate</p>
+                  <p className="text-2xl font-bold text-red-600">
+                    {formatPercentage(metrics.errorRate)}
+                  </p>
+                </div>
               </Card>
             </div>
           )}
-        </TabsContent>
+        </div>
 
-        <TabsContent value="usage" className="space-y-4">
+        <div className="space-y-4">
           {stats && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
+            <Card className="p-6">
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold flex items-center">
                   <BarChart3 className="h-5 w-5 mr-2" />
                   Usage Analytics
-                </CardTitle>
-                <CardDescription>
+                </h3>
+                <p className="text-gray-600 mt-1">
                   Detailed breakdown of API usage and quotas
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
+                </p>
+              </div>
+              <div className="space-y-6">
                 <div>
                   <div className="flex justify-between mb-2">
                     <span className="text-sm font-medium">Daily Token Usage</span>
@@ -601,65 +582,65 @@ const GeminiMonitoringDashboard: React.FC = () => {
                     </p>
                   </div>
                 </div>
-              </CardContent>
+              </div>
             </Card>
           )}
-        </TabsContent>
+        </div>
 
-        <TabsContent value="health" className="space-y-4">
+        <div className="space-y-4">
           {stats && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Health Status</CardTitle>
-                  <CardDescription>
+              <Card className="p-6">
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold">Health Status</h3>
+                  <p className="text-gray-600 mt-1">
                     Current health indicators for the Gemini AI service
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
+                  </p>
+                </div>
+                <div className="space-y-4">
                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <span className="font-medium">API Key Configured</span>
-                    <Badge variant={stats.health.apiKeyConfigured ? 'default' : 'destructive'}>
+                    <Chip variant={stats.health.apiKeyConfigured ? 'default' : 'destructive'}>
                       {stats.health.apiKeyConfigured ? 'Yes' : 'No'}
-                    </Badge>
+                    </Chip>
                   </div>
                   
                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <span className="font-medium">Rate Limit OK</span>
-                    <Badge variant={stats.health.rateLimitOk ? 'default' : 'destructive'}>
+                    <Chip variant={stats.health.rateLimitOk ? 'default' : 'destructive'}>
                       {stats.health.rateLimitOk ? 'OK' : 'Exceeded'}
-                    </Badge>
+                    </Chip>
                   </div>
                   
                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <span className="font-medium">Quota Available</span>
-                    <Badge variant={stats.health.quotaAvailable ? 'default' : 'destructive'}>
+                    <Chip variant={stats.health.quotaAvailable ? 'default' : 'destructive'}>
                       {stats.health.quotaAvailable ? 'Available' : 'Low'}
-                    </Badge>
+                    </Chip>
                   </div>
-                </CardContent>
+                </div>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Performance Settings</CardTitle>
-                  <CardDescription>
+              <Card className="p-6">
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold">Performance Settings</h3>
+                  <p className="text-gray-600 mt-1">
                     Current configuration and optimization settings
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
+                  </p>
+                </div>
+                <div className="space-y-4">
                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <span className="font-medium">Caching Enabled</span>
-                    <Badge variant={stats.performance.cachingEnabled ? 'default' : 'secondary'}>
+                    <Chip variant={stats.performance.cachingEnabled ? 'default' : 'secondary'}>
                       {stats.performance.cachingEnabled ? 'Enabled' : 'Disabled'}
-                    </Badge>
+                    </Chip>
                   </div>
                   
                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <span className="font-medium">Rate Limiting</span>
-                    <Badge variant={stats.performance.rateLimitingEnabled ? 'default' : 'secondary'}>
+                    <Chip variant={stats.performance.rateLimitingEnabled ? 'default' : 'secondary'}>
                       {stats.performance.rateLimitingEnabled ? 'Enabled' : 'Disabled'}
-                    </Badge>
+                    </Chip>
                   </div>
                   
                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -668,24 +649,24 @@ const GeminiMonitoringDashboard: React.FC = () => {
                       {stats.performance.timeoutMs / 1000}s
                     </span>
                   </div>
-                </CardContent>
+                </div>
               </Card>
             </div>
           )}
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
 
       {/* Alerts */}
       {stats && stats.status !== 'healthy' && (
-        <Alert>
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
+        <div className="flex items-start space-x-3 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
+          <div className="text-sm text-yellow-800">
             {stats.status === 'degraded' 
               ? 'Gemini AI service is experiencing degraded performance. Some features may be slower than usual.'
               : 'Gemini AI service is currently unhealthy. Please check the configuration and try again.'
             }
-          </AlertDescription>
-        </Alert>
+          </div>
+        </div>
       )}
     </div>
   )

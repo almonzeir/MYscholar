@@ -164,14 +164,6 @@ const ErrorMonitoringDashboard: React.FC<ErrorMonitoringDashboardProps> = ({ cla
   return (
     <ErrorBoundary
       level="feature"
-      onError={(error, errorInfo) => {
-        reportError(error, {
-          component: 'ErrorMonitoringDashboard',
-          viewMode,
-          timeRange,
-          errorInfo
-        })
-      }}
     >
       <div className={cn('space-y-6', className)}>
         {/* Header */}

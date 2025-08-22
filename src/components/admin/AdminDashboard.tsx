@@ -518,9 +518,6 @@ export default function AdminDashboard() {
         {activeTab === 'errors' && (
           <ErrorBoundary
             level="feature"
-            onError={(error, errorInfo) => {
-              console.error('Error in Error Monitoring Dashboard:', error, errorInfo)
-            }}
           >
             <ErrorMonitoringDashboard />
           </ErrorBoundary>
@@ -529,9 +526,6 @@ export default function AdminDashboard() {
         {activeTab === 'health' && (
           <ErrorBoundary
             level="feature"
-            onError={(error, errorInfo) => {
-              console.error('Error in System Health Dashboard:', error, errorInfo)
-            }}
           >
             <SystemHealthDashboard />
           </ErrorBoundary>
@@ -540,9 +534,6 @@ export default function AdminDashboard() {
         {activeTab === 'gemini-monitoring' && (
           <ErrorBoundary
             level="feature"
-            onError={(error, errorInfo) => {
-              console.error('Error in Gemini Monitoring Dashboard:', error, errorInfo)
-            }}
           >
             <GeminiMonitoringDashboard />
           </ErrorBoundary>

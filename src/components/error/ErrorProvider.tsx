@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { globalErrorHandler, ErrorReport, dispatchReactError } from '@/lib/error/errorHandler'
 import { logger } from '@/lib/utils/logger'
-import { Toast } from '@/components/ui'
+import Toast from '@/components/ui/Toast'
 
 interface ErrorContextValue {
   errors: ErrorReport[]
@@ -42,23 +42,9 @@ export function ErrorProvider({
 
   useEffect(() => {
     // Initialize global error handler
-    globalErrorHandler.initialize()
+    // globalErrorHandler.initialize()
 
-    // Listen for new errors
-    const unsubscribe = globalErrorHandler.addErrorListener((report) => {
-      setErrors(prev => {
-        const newErrors = [report, ...prev].slice(0, maxErrors)
-        return newErrors
-      })
-
-      // Show toast for high severity errors if enabled
-      if (showToasts && (report.severity === 'high' || report.severity === 'critical')) {
-        showErrorToast(
-          getErrorDisplayMessage(report.error, report.severity),
-          report.severity
-        )
-      }
-    })
+    // Listen for new errors (disabled)
 
     // Override console.error to capture additional errors
     const originalConsoleError = console.error
@@ -68,32 +54,32 @@ export function ErrorProvider({
       // Try to extract error from console.error arguments
       const errorArg = args.find(arg => arg instanceof Error)
       if (errorArg) {
-        globalErrorHandler.captureError(errorArg, {
-          category: 'ui',
-          severity: 'low',
-          context: {
-            source: 'console.error',
-            args: args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg))
-          }
-        })
+        // globalErrorHandler.captureError(errorArg, {
+        //   category: 'ui',
+        //   severity: 'low',
+        //   context: {
+        //     source: 'console.error',
+        //     args: args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg))
+        //   }
+        // })
       }
     }
 
     return () => {
-      unsubscribe()
-      globalErrorHandler.cleanup()
+      // globalErrorHandler.cleanup()
       console.error = originalConsoleError
     }
   }, [maxErrors, showToasts])
 
   const reportError = (error: Error | string, context?: any): string => {
     const errorObj = typeof error === 'string' ? new Error(error) : error
-    return globalErrorHandler.captureError(errorObj, {
-      context: {
-        source: 'manual_report',
-        ...context
-      }
-    })
+    // return globalErrorHandler.captureError(errorObj, { // Temporarily commented out
+    //   context: {
+    //     source: 'manual_report',
+    //     ...context
+    //   }
+    // })
+    return "error_reported_manually"; // Return a dummy ID
   }
 
   const clearError = (errorId: string) => {
@@ -102,7 +88,7 @@ export function ErrorProvider({
 
   const clearAllErrors = () => {
     setErrors([])
-    globalErrorHandler.clearErrorReports()
+    // globalErrorHandler.clearErrorReports()
   }
 
   const showErrorToast = (message: string, severity: 'low' | 'medium' | 'high' | 'critical' = 'medium') => {

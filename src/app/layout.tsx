@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import React from 'react'
 import './globals.css'
-import { ErrorProvider, ErrorBoundary } from '@/components/error'
+import { Providers } from './providers';
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -23,21 +23,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.variable}>
       <body className={`${inter.className} antialiased bg-surface-900 text-white`}>
-        <ErrorProvider
-          maxErrors={100}
-          showToasts={true}
-          autoReportReactErrors={true}
-        >
-          <ErrorBoundary
-            level="page"
-            onError={(error, errorInfo) => {
-              // Additional page-level error handling if needed
-              console.error('Page-level error:', error, errorInfo)
-            }}
-          >
-            {children}
-          </ErrorBoundary>
-        </ErrorProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   )

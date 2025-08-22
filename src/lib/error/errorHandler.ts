@@ -62,12 +62,19 @@ class GlobalErrorHandler {
   private handleUnhandledRejection = (event: PromiseRejectionEvent) => {
     const error = event.reason instanceof Error ? event.reason : new Error(String(event.reason))
     
+    // Extract only essential information from event.reason to avoid deep copying
+    const reasonDetails = event.reason instanceof Error ? {
+      message: event.reason.message,
+      name: event.reason.name,
+      stack: event.reason.stack
+    } : String(event.reason);
+
     this.captureError(error, {
       category: 'api',
       severity: 'high',
       context: {
         type: 'unhandled_promise_rejection',
-        reason: event.reason
+        reason: reasonDetails // Pass simplified reason
       }
     })
 
@@ -78,29 +85,35 @@ class GlobalErrorHandler {
   private handleGlobalError = (event: ErrorEvent) => {
     const error = event.error || new Error(event.message)
     
+    // Sanitize context to prevent circular references
+    const sanitizedContext = {
+      type: 'global_error',
+      filename: event.filename,
+      lineno: event.lineno,
+      colno: event.colno
+    };
+
     this.captureError(error, {
       category: 'ui',
       severity: 'medium',
-      context: {
-        type: 'global_error',
-        filename: event.filename,
-        lineno: event.lineno,
-        colno: event.colno
-      }
+      context: sanitizedContext
     })
   }
 
   private handleReactError = (event: CustomEvent) => {
     const { error, errorInfo, component } = event.detail
     
+    // Sanitize context to prevent circular references
+    const sanitizedContext = {
+      type: 'react_error',
+      component,
+      componentStack: errorInfo?.componentStack ? String(errorInfo.componentStack) : undefined // Convert to string
+    };
+
     this.captureError(error, {
       category: 'ui',
       severity: 'high',
-      context: {
-        type: 'react_error',
-        component,
-        componentStack: errorInfo?.componentStack
-      }
+      context: sanitizedContext
     })
   }
 
@@ -117,15 +130,20 @@ class GlobalErrorHandler {
     
     const context: ErrorContext = {
       timestamp: new Date().toISOString(),
-      userAgent: navigator.userAgent,
-      url: window.location.href,
-      route: window.location.pathname,
-      ...options.context
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '', // Ensure navigator is defined
+      url: typeof window !== 'undefined' ? window.location.href : '', // Ensure window is defined
+      route: typeof window !== 'undefined' ? window.location.pathname : '', // Ensure window is defined
+      ...(options.context || {}) // Safely spread context
     }
+
+    // Create a new Error object to avoid circular references in the original error
+    const sanitizedError = new Error(error.message);
+    sanitizedError.name = error.name;
+    sanitizedError.stack = error.stack;
 
     const report: ErrorReport = {
       id: errorId,
-      error,
+      error: sanitizedError, // Use the sanitized error
       context,
       severity: options.severity || this.determineSeverity(error),
       category: options.category || this.categorizeError(error),
@@ -144,7 +162,7 @@ class GlobalErrorHandler {
       category: report.category,
       severity: report.severity,
       recoverable: report.recoverable,
-      context
+      context: report.context, // Re-enabled context
     })
 
     // Notify listeners
@@ -338,26 +356,26 @@ class GlobalErrorHandler {
 }
 
 // Create singleton instance
-export const globalErrorHandler = new GlobalErrorHandler()
+// export const globalErrorHandler = new GlobalErrorHandler()
 
 // Utility function to dispatch React errors to global handler
-export const dispatchReactError = (error: Error, errorInfo: any, component?: string) => {
-  const event = new CustomEvent('react-error', {
-    detail: { error, errorInfo, component }
-  })
-  window.dispatchEvent(event)
-}
+// export const dispatchReactError = (error: Error, errorInfo: any, component?: string) => {
+//   const event = new CustomEvent('react-error', {
+//     detail: { error, errorInfo, component }
+//   })
+//   window.dispatchEvent(event)
+// }
 
 // Utility function for manual error reporting
-export const reportError = (
-  error: Error | string,
-  context?: Partial<ErrorContext>,
-  options?: {
-    category?: ErrorReport['category']
-    severity?: ErrorReport['severity']
-    recoverable?: boolean
-  }
-) => {
-  const errorObj = typeof error === 'string' ? new Error(error) : error
-  return globalErrorHandler.captureError(errorObj, { context, ...options })
-}
+// export const reportError = (
+//   error: Error | string,
+//   context?: Partial<ErrorContext>,
+//   options?: {
+//     category?: ErrorReport['category']
+//     severity?: ErrorReport['severity']
+//     recoverable?: boolean
+//   }
+// ) => {
+//   const errorObj = typeof error === 'string' ? new Error(error) : error
+//   return globalErrorHandler.captureError(errorObj, { context, ...options })
+// }

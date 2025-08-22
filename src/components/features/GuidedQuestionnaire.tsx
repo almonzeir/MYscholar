@@ -417,14 +417,6 @@ export default function GuidedQuestionnaire({
   return (
     <ErrorBoundary
       level="feature"
-      onError={(error, errorInfo) => {
-        reportError(error, {
-          component: 'GuidedQuestionnaire',
-          currentStep,
-          totalSteps: questionSteps.length,
-          errorInfo
-        })
-      }}
     >
       <div className={cn('max-w-2xl mx-auto', className)}>
       {/* Progress */}

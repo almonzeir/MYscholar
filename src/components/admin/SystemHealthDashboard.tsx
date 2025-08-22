@@ -264,13 +264,6 @@ const SystemHealthDashboard: React.FC<SystemHealthDashboardProps> = ({ className
   return (
     <ErrorBoundary
       level="feature"
-      onError={(error, errorInfo) => {
-        reportError(error, {
-          component: 'SystemHealthDashboard',
-          systemHealth,
-          errorInfo
-        })
-      }}
     >
       <div className={cn('space-y-6', className)}>
         {/* Header */}

@@ -188,12 +188,6 @@ const CVUpload = memo(function CVUpload({
   return (
     <ErrorBoundary
       level="feature"
-      onError={(error, errorInfo) => {
-        reportError(error, {
-          component: 'CVUpload',
-          errorInfo
-        })
-      }}
     >
       <div className={cn('w-full max-w-2xl mx-auto', className)}>
       {/* Upload Area */}

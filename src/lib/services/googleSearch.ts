@@ -1,203 +1,75 @@
-// Google Programmable Search Engine integration
-// This service handles scholarship data collection from trusted sources
+const GOOGLE_CSE_API_KEY = process.env.GOOGLE_CSE_KEY || 'YOUR_GOOGLE_CSE_API_KEY';
+const GOOGLE_CSE_CX = process.env.GOOGLE_CSE_CX || 'YOUR_GOOGLE_CSE_CX';
 
-import { logger } from '../utils/logger'
+/**
+ * Builds an array of search queries based on profile facets and official domains.
+ * @param profile - User profile object.
+ * @param officialDomains - Array of allowlisted official domains.
+ * @returns An array of search query strings.
+ */
+export function buildQueries(profile: any, officialDomains: string[]): string[] {
+  const queries: string[] = [];
+  const baseQuery = 'fully funded scholarship';
 
-interface GoogleSearchResult {
-  title: string
-  link: string
-  snippet: string
-  displayLink: string
-  formattedUrl: string
-  htmlTitle?: string
-  htmlSnippet?: string
-}
+  // Add profile facets to the query
+  let profileFacets = '';
+  if (profile.degreeTarget) profileFacets += ` ${profile.degreeTarget}`;
+  if (profile.fields && profile.fields.length > 0) profileFacets += ` ${profile.fields.join(' OR ')}`;
+  if (profile.nationality) profileFacets += ` ${profile.nationality}`;
+  // Add other profile facets as needed
 
-interface GoogleSearchResponse {
-  items?: GoogleSearchResult[]
-  searchInformation?: {
-    totalResults: string
-    searchTime: number
-  }
-  queries?: {
-    nextPage?: Array<{
-      startIndex: number
-    }>
-  }
-}
-
-export class GoogleScholarshipSearchService {
-  private apiKey: string
-  private searchEngineId: string
-  private baseUrl = 'https://www.googleapis.com/customsearch/v1'
-
-  constructor() {
-    this.apiKey = process.env.GOOGLE_SEARCH_API_KEY || ''
-    this.searchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID || ''
+  // Generate queries blending profile facets + official domains
+  officialDomains.forEach(domain => {
+    // Example: site:daad.de fully funded Master stipend deadline <field>
+    queries.push(`${baseQuery}${profileFacets} site:${domain}`);
     
-    if (!this.apiKey || !this.searchEngineId) {
-      console.warn('Google Search API credentials not configured')
+    // Add more specific queries based on domain and profile
+    if (domain.includes('chevening.org') && profile.nationality) {
+      queries.push(`chevening.org scholarship ${profile.nationality} site:chevening.org`);
     }
+    if (domain.includes('studyinjapan.go.jp')) {
+      queries.push(`MEXT graduate stipend airfare site:studyinjapan.go.jp`);
+    }
+    // Add more domain-specific queries as per specification
+  });
+
+  // Add general queries if no specific domains are provided or for broader search
+  if (officialDomains.length === 0) {
+    queries.push(`${baseQuery}${profileFacets}`);
   }
 
-  async searchScholarships(query: string, options: {
-    start?: number
-    num?: number
-    siteRestrict?: string[]
-    dateRestrict?: string
-  } = {}): Promise<GoogleSearchResponse> {
-    if (!this.apiKey || !this.searchEngineId) {
-      throw new Error('Google Search API not configured')
-    }
+  // Add "Erasmus Mundus" specific query
+  queries.push(`"Erasmus Mundus" scholarship stipend deadline site:ec.europa.eu`);
 
-    const params = new URLSearchParams({
-      key: this.apiKey,
-      cx: this.searchEngineId,
-      q: query,
-      start: (options.start || 1).toString(),
-      num: Math.min(options.num || 10, 10).toString(), // Max 10 per request
-      safe: 'active',
-      fields: 'items(title,link,snippet,displayLink,formattedUrl,htmlTitle,htmlSnippet),searchInformation,queries'
-    })
+  return queries;
+}
 
-    // Add site restrictions if provided
-    if (options.siteRestrict?.length) {
-      const siteQuery = options.siteRestrict.map(site => `site:${site}`).join(' OR ')
-      params.set('q', `${query} (${siteQuery})`)
-    }
+/**
+ * Executes Google Custom Search Engine queries and returns search hits.
+ * @param queries - An array of search query strings.
+ * @returns A Promise that resolves to an array of search hits.
+ */
+export async function fanOutCSE(queries: string[]): Promise<any[]> {
+  const searchHits: any[] = [];
 
-    // Add date restrictions
-    if (options.dateRestrict) {
-      params.set('dateRestrict', options.dateRestrict)
-    }
-
+  for (const query of queries) {
     try {
-      const response = await fetch(`${this.baseUrl}?${params}`, {
-        headers: {
-          'User-Agent': 'ScholarshipPlatform/1.0'
-        }
-      })
+      const response = await fetch(
+        `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_CSE_API_KEY}&cx=${GOOGLE_CSE_CX}&q=${encodeURIComponent(query)}`
+      );
+      const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(`Google Search API error: ${response.status} ${response.statusText}`)
+      if (data.items) {
+        searchHits.push(...data.items.map((item: any) => ({
+          title: item.title,
+          link: item.link,
+          snippet: item.snippet,
+        })));
       }
-
-      const data: GoogleSearchResponse = await response.json()
-      return data
-
     } catch (error) {
-      logger.error('Google Search API error', error instanceof Error ? error : new Error(String(error)))
-      throw error
+      console.error(`Error fetching search results for query "${query}":`, error);
     }
   }
 
-  // Search for scholarships with predefined queries
-  async findScholarships(options: {
-    degreeLevel?: string
-    field?: string
-    country?: string
-    year?: number
-    limit?: number
-  } = {}): Promise<GoogleSearchResult[]> {
-    const queries = this.buildScholarshipQueries(options)
-    const allResults: GoogleSearchResult[] = []
-
-    for (const query of queries) {
-      try {
-        const response = await this.searchScholarships(query, {
-          num: Math.min(options.limit || 10, 10),
-          siteRestrict: this.getTrustedDomains(),
-          dateRestrict: 'y1' // Last year
-        })
-
-        if (response.items) {
-          allResults.push(...response.items)
-        }
-
-        // Rate limiting - wait between requests
-        await new Promise(resolve => setTimeout(resolve, 100))
-
-      } catch (error) {
-        logger.error('Google search query failed', error instanceof Error ? error : new Error(String(error)), { query })
-        continue
-      }
-    }
-
-    // Remove duplicates based on URL
-    const uniqueResults = allResults.filter((result, index, self) =>
-      index === self.findIndex(r => r.link === result.link)
-    )
-
-    return uniqueResults.slice(0, options.limit || 50)
-  }
-
-  private buildScholarshipQueries(options: {
-    degreeLevel?: string
-    field?: string
-    country?: string
-    year?: number
-  }): string[] {
-    const baseTerms = ['scholarship', 'fellowship', 'grant', 'funding']
-    const year = options.year || new Date().getFullYear()
-    
-    const queries: string[] = []
-
-    baseTerms.forEach(term => {
-      let query = `${term} ${year}`
-      
-      if (options.degreeLevel) {
-        query += ` ${options.degreeLevel}`
-      }
-      
-      if (options.field) {
-        query += ` "${options.field}"`
-      }
-      
-      if (options.country) {
-        query += ` ${options.country}`
-      }
-
-      // Add common scholarship terms
-      query += ' application deadline requirements'
-      
-      queries.push(query)
-    })
-
-    return queries
-  }
-
-  private getTrustedDomains(): string[] {
-    return [
-      'daad.de',
-      'fulbrightonline.org',
-      'chevening.org',
-      'commonwealthscholarships.org',
-      'erasmusplus.org.uk',
-      'europa.eu',
-      'britishcouncil.org',
-      'iie.org',
-      'studyinnorway.no',
-      'studyinsweden.se',
-      'studyindenmark.dk',
-      'nuffic.nl',
-      'campusfrance.org',
-      'scholarshipportal.com',
-      'studyportals.com'
-    ]
-  }
-
-  // Get search quota usage
-  async getQuotaUsage(): Promise<{
-    dailyQueries: number
-    remainingQueries: number
-    resetTime: Date
-  }> {
-    // This would typically come from Google Cloud Console or API
-    // For now, return mock data
-    return {
-      dailyQueries: 85,
-      remainingQueries: 15,
-      resetTime: new Date(Date.now() + 24 * 60 * 60 * 1000)
-    }
-  }
+  return searchHits;
 }

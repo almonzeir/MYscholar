@@ -6,6 +6,7 @@ interface ChipProps extends React.HTMLAttributes<HTMLSpanElement> {
   size?: 'sm' | 'md' | 'lg'
   removable?: boolean
   onRemove?: () => void
+  onClose?: () => void // Add alias for backward compatibility
   children: React.ReactNode
 }
 
@@ -14,10 +15,13 @@ export default function Chip({
   size = 'md',
   removable = false,
   onRemove,
+  onClose,
   className,
   children,
   ...props
 }: ChipProps) {
+  // Use onClose as fallback for onRemove for backward compatibility
+  const handleRemove = onRemove || onClose
   const variants = {
     default: 'chip',
     primary: 'chip-primary',
@@ -43,9 +47,9 @@ export default function Chip({
       {...props}
     >
       {children}
-      {removable && onRemove && (
+      {removable && handleRemove && (
         <button
-          onClick={onRemove}
+          onClick={handleRemove}
           className="ml-2 hover:bg-white/20 rounded-full p-0.5 transition-colors"
           aria-label="Remove"
         >

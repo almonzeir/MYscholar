@@ -338,17 +338,32 @@
   .animate-in {
     @apply animate-fade-in-up;
   }
-  
+
   .animate-in-delay {
     @apply animate-fade-in-up;
     animation-delay: 0.2s;
     animation-fill-mode: both;
   }
-  
+
   .animate-in-delay-2 {
     @apply animate-fade-in-up;
     animation-delay: 0.4s;
     animation-fill-mode: both;
+  }
+
+  /* Text Utilities */
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
   
   /* Responsive Utilities */

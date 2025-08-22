@@ -1,460 +1,138 @@
-// Data ingestion service for scholarship information
-// Handles collection, normalization, and storage of scholarship data
+import { JSDOM } from 'jsdom'; // For parsing HTML and extracting links
+import crypto from 'crypto'; // For generating URL hashes
 
-import { GoogleScholarshipSearchService } from './googleSearch'
-import { logger } from '../utils/logger'
-// import type { Scholarship } from '../../types/database'
-
-interface RawScholarshipData {
-  title: string
-  url: string
-  content: string
-  domain: string
-  extractedAt: Date
-  source: 'google_search' | 'rss' | 'manual'
+interface SearchHit {
+  title: string;
+  link: string;
+  snippet: string;
 }
 
-interface NormalizedScholarshipData {
-  name: string
-  sourceUrl: string
-  domain: string
-  country: string
-  degreeLevels: string[]
-  fields: string[]
-  deadline: Date
-  stipend?: number
-  tuitionCovered: boolean
-  travelSupport: boolean
-  eligibilityText: string
-  requirements: string[]
-  tags: string[]
-  confidence: number
+interface OfficialPage {
+  url: string;
+  html: string;
+  hash: string;
+  sourceUrl: string; // Original URL from search hit
 }
 
-export class ScholarshipIngestionService {
-  private googleSearch: GoogleScholarshipSearchService
+/**
+ * Fetches HTML content from a list of search hits, canonicalizes URLs, and deduplicates.
+ * @param searchHits - Array of search hits from Google CSE.
+ * @returns A Promise that resolves to an array of OfficialPage objects.
+ */
+export async function fetchOfficial(searchHits: SearchHit[]): Promise<OfficialPage[]> {
+  const officialPages: OfficialPage[] = [];
+  const visitedHashes = new Set<string>();
 
-  constructor() {
-    this.googleSearch = new GoogleScholarshipSearchService()
-  }
-
-  // Main ingestion pipeline
-  async ingestScholarships(options: {
-    sources?: ('google' | 'rss' | 'manual')[]
-    degreeLevel?: string
-    field?: string
-    country?: string
-    limit?: number
-  } = {}): Promise<{
-    processed: number
-    successful: number
-    failed: number
-    errors: string[]
-  }> {
-    const results = {
-      processed: 0,
-      successful: 0,
-      failed: 0,
-      errors: [] as string[]
-    }
-
-    const sources = options.sources || ['google']
-
-    for (const source of sources) {
-      try {
-        switch (source) {
-          case 'google':
-            await this.ingestFromGoogle(options, results)
-            break
-          case 'rss':
-            await this.ingestFromRSS(options, results)
-            break
-          case 'manual':
-            await this.ingestManualSources(options, results)
-            break
-        }
-      } catch (error) {
-        results.errors.push(`${source} ingestion failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-      }
-    }
-
-    return results
-  }
-
-  private async ingestFromGoogle(
-    options: any,
-    results: { processed: number; successful: number; failed: number; errors: string[] }
-  ): Promise<void> {
+  for (const hit of searchHits) {
     try {
-      const searchResults = await this.googleSearch.findScholarships({
-        degreeLevel: options.degreeLevel,
-        field: options.field,
-        country: options.country,
-        limit: options.limit || 50
-      })
+      // First, check reachability with a HEAD request
+      const headResponse = await fetch(hit.link, { method: 'HEAD' });
+      if (!headResponse.ok) {
+        console.warn(`Unreachable URL (HEAD) ${hit.link}: ${headResponse.statusText}`);
+        continue;
+      }
 
-      for (const result of searchResults) {
-        results.processed++
+      // Ensure it's an HTML page before fetching full content
+      const contentType = headResponse.headers.get('content-type');
+      if (!contentType || !contentType.includes('text/html')) {
+        console.warn(`Skipping non-HTML content at ${hit.link}. Content-Type: ${contentType}`);
+        continue;
+      }
 
-        try {
-          // Extract content from the page
-          const rawData: RawScholarshipData = {
-            title: result.title,
-            url: result.link,
-            content: result.snippet || '',
-            domain: result.displayLink,
-            extractedAt: new Date(),
-            source: 'google_search'
+      const response = await fetch(hit.link);
+      if (!response.ok) {
+        console.warn(`Failed to fetch ${hit.link}: ${response.statusText}`);
+        continue;
+      }
+
+      const html = await response.text();
+      const urlHash = crypto.createHash('sha256').update(hit.link).digest('hex');
+
+      // Check if the domain is allowlisted (more robust check)
+      const isOfficialDomain = await isDomainOfficial(new URL(hit.link).hostname);
+
+      if (!visitedHashes.has(urlHash)) {
+        if (isOfficialDomain) {
+          officialPages.push({
+            url: hit.link,
+            html,
+            hash: urlHash,
+            sourceUrl: hit.link,
+          });
+          visitedHashes.add(urlHash);
+        } else if (isAggregator(hit.link)) {
+          // If it's an aggregator, try to find official links within it
+          const dom = new JSDOM(html);
+          const links = Array.from(dom.window.document.querySelectorAll('a'))
+            .map(a => (a as HTMLAnchorElement).href)
+            .filter(href => href.startsWith('http')); // Only absolute URLs
+
+          for (const internalLink of links) {
+            try {
+              const internalUrl = new URL(internalLink);
+              const internalUrlHash = crypto.createHash('sha256').update(internalLink).digest('hex');
+
+              // Only follow and fetch if the internal link is to an official domain
+              if (!visitedHashes.has(internalUrlHash) && await isDomainOfficial(internalUrl.hostname)) {
+                const internalHeadResponse = await fetch(internalLink, { method: 'HEAD' });
+                if (!internalHeadResponse.ok) {
+                  console.warn(`Unreachable internal URL (HEAD) ${internalLink}: ${internalHeadResponse.statusText}`);
+                  continue;
+                }
+                const internalContentType = internalHeadResponse.headers.get('content-type');
+                if (!internalContentType || !internalContentType.includes('text/html')) {
+                  console.warn(`Skipping non-HTML internal content at ${internalLink}. Content-Type: ${internalContentType}`);
+                  continue;
+                }
+
+                const internalResponse = await fetch(internalLink);
+                if (internalResponse.ok) {
+                  const internalHtml = await internalResponse.text();
+                  officialPages.push({
+                    url: internalLink,
+                    html: internalHtml,
+                    hash: internalUrlHash,
+                    sourceUrl: hit.link, // Original aggregator link
+                  });
+                  visitedHashes.add(internalUrlHash);
+                }
+              }
+            } catch (internalError) {
+              console.warn(`Failed to process internal link ${internalLink}:`, internalError);
+            }
           }
-
-          // Normalize the data
-          const normalized = await this.normalizeScholarshipData(rawData)
-          
-          if (normalized) {
-            // In a real implementation, save to database
-            // await scholarshipRepository.create(normalized)
-            results.successful++
-          } else {
-            results.failed++
-            results.errors.push(`Failed to normalize: ${result.title}`)
-          }
-
-        } catch (error) {
-          results.failed++
-          results.errors.push(`Processing failed for ${result.title}: ${error instanceof Error ? error.message : 'Unknown error'}`)
         }
-
-        // Rate limiting
-        await new Promise(resolve => setTimeout(resolve, 200))
       }
 
     } catch (error) {
-      throw new Error(`Google ingestion failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      console.error(`Error processing search hit ${hit.link}:`, error);
     }
   }
 
-  private async ingestFromRSS(
-    _options: any,
-    results: { processed: number; successful: number; failed: number; errors: string[] }
-  ): Promise<void> {
-    // RSS feed sources for scholarship announcements
-    const rssSources = [
-      'https://www.daad.de/en/rss.xml',
-      'https://www.fulbrightonline.org/rss',
-      'https://www.chevening.org/rss',
-      // Add more RSS feeds
-    ]
+  return officialPages;
+}
 
-    for (const rssUrl of rssSources) {
-      try {
-        // In a real implementation, parse RSS feeds
-        // const feed = await parseFeed(rssUrl)
-        // Process feed items...
-        
-        results.processed += 5 // Mock processing
-        results.successful += 4
-        results.failed += 1
+/**
+ * Simple heuristic to determine if a URL is likely an aggregator.
+ * This would be replaced by a more sophisticated check using a predefined list of aggregators.
+ */
+function isAggregator(url: string): boolean {
+  // Example: Check for common aggregator keywords in the URL
+  return url.includes('scholarship-positions.com') || url.includes('scholars4dev.com');
+}
 
-      } catch (error) {
-        results.errors.push(`RSS ingestion failed for ${rssUrl}: ${error instanceof Error ? error.message : 'Unknown error'}`)
-      }
-    }
-  }
-
-  private async ingestManualSources(
-    _options: any,
-    results: { processed: number; successful: number; failed: number; errors: string[] }
-  ): Promise<void> {
-    // Manual curation of high-quality scholarship sources
-    const manualSources = [
-      {
-        name: 'DAAD Scholarships Database',
-        url: 'https://www.daad.de/en/study-and-research-in-germany/scholarships/',
-        scrapeConfig: {
-          titleSelector: '.scholarship-title',
-          deadlineSelector: '.deadline',
-          descriptionSelector: '.description'
-        }
-      },
-      // Add more manual sources
-    ]
-
-    for (const source of manualSources) {
-      try {
-        // In a real implementation, scrape structured data
-        // const scrapedData = await scrapeWebsite(source)
-        // Process scraped data...
-        
-        results.processed += 10 // Mock processing
-        results.successful += 9
-        results.failed += 1
-
-      } catch (error) {
-        results.errors.push(`Manual ingestion failed for ${source.name}: ${error instanceof Error ? error.message : 'Unknown error'}`)
-      }
-    }
-  }
-
-  // Normalize raw scholarship data into structured format
-  private async normalizeScholarshipData(raw: RawScholarshipData): Promise<NormalizedScholarshipData | null> {
-    try {
-      // Extract structured information from raw content
-      const normalized: NormalizedScholarshipData = {
-        name: this.cleanTitle(raw.title),
-        sourceUrl: raw.url,
-        domain: raw.domain,
-        country: this.extractCountry(raw.content, raw.domain),
-        degreeLevels: this.extractDegreeLevels(raw.content),
-        fields: this.extractFields(raw.content),
-        deadline: this.extractDeadline(raw.content),
-        stipend: this.extractStipend(raw.content),
-        tuitionCovered: this.extractTuitionInfo(raw.content),
-        travelSupport: this.extractTravelInfo(raw.content),
-        eligibilityText: this.extractEligibility(raw.content),
-        requirements: this.extractRequirements(raw.content),
-        tags: this.generateTags(raw.content, raw.domain),
-        confidence: this.calculateConfidence(raw)
-      }
-
-      // Validate the normalized data
-      if (this.validateScholarshipData(normalized)) {
-        return normalized
-      }
-
-      return null
-
-    } catch (error) {
-      logger.error('Data normalization failed', error instanceof Error ? error : new Error(String(error)))
-      return null
-    }
-  }
-
-  // Data extraction methods
-  private cleanTitle(title: string): string {
-    return title
-      .replace(/\s+/g, ' ')
-      .replace(/[^\w\s-]/g, '')
-      .trim()
-      .substring(0, 200)
-  }
-
-  private extractCountry(content: string, domain: string): string {
-    // Domain-based country mapping
-    const domainCountryMap: Record<string, string> = {
-      'daad.de': 'Germany',
-      'studyinnorway.no': 'Norway',
-      'studyinsweden.se': 'Sweden',
-      'studyindenmark.dk': 'Denmark',
-      'nuffic.nl': 'Netherlands',
-      'campusfrance.org': 'France',
-      'britishcouncil.org': 'United Kingdom'
-    }
-
-    if (domainCountryMap[domain]) {
-      return domainCountryMap[domain]
-    }
-
-    // Content-based extraction
-    const countryPatterns = [
-      /study in (\w+)/i,
-      /scholarships? (?:for|in) (\w+)/i,
-      /(\w+) government scholarship/i
-    ]
-
-    for (const pattern of countryPatterns) {
-      const match = content.match(pattern)
-      if (match) {
-        return this.capitalizeCountry(match[1])
-      }
-    }
-
-    return 'International'
-  }
-
-  private extractDegreeLevels(content: string): string[] {
-    const levels: string[] = []
-    const lowerContent = content.toLowerCase()
-
-    if (lowerContent.includes('bachelor') || lowerContent.includes('undergraduate')) {
-      levels.push('bachelor')
-    }
-    if (lowerContent.includes('master') || lowerContent.includes('graduate')) {
-      levels.push('master')
-    }
-    if (lowerContent.includes('phd') || lowerContent.includes('doctoral') || lowerContent.includes('doctorate')) {
-      levels.push('phd')
-    }
-    if (lowerContent.includes('postdoc') || lowerContent.includes('post-doctoral')) {
-      levels.push('postdoc')
-    }
-
-    return levels.length > 0 ? levels : ['master'] // Default to master's
-  }
-
-  private extractFields(content: string): string[] {
-    const fieldKeywords = [
-      'computer science', 'engineering', 'medicine', 'business', 'economics',
-      'law', 'arts', 'humanities', 'social sciences', 'natural sciences',
-      'mathematics', 'physics', 'chemistry', 'biology', 'psychology',
-      'education', 'journalism', 'architecture', 'design', 'music'
-    ]
-
-    const lowerContent = content.toLowerCase()
-    const foundFields = fieldKeywords.filter(field => 
-      lowerContent.includes(field)
-    )
-
-    return foundFields.length > 0 ? foundFields : ['all fields']
-  }
-
-  private extractDeadline(content: string): Date {
-    // Common deadline patterns
-    const deadlinePatterns = [
-      /deadline:?\s*(\w+\s+\d{1,2},?\s+\d{4})/i,
-      /apply by:?\s*(\w+\s+\d{1,2},?\s+\d{4})/i,
-      /due:?\s*(\w+\s+\d{1,2},?\s+\d{4})/i,
-      /(\d{1,2}\/\d{1,2}\/\d{4})/,
-      /(\d{4}-\d{2}-\d{2})/
-    ]
-
-    for (const pattern of deadlinePatterns) {
-      const match = content.match(pattern)
-      if (match) {
-        const date = new Date(match[1])
-        if (!isNaN(date.getTime()) && date > new Date()) {
-          return date
-        }
-      }
-    }
-
-    // Default to 6 months from now if no deadline found
-    const defaultDeadline = new Date()
-    defaultDeadline.setMonth(defaultDeadline.getMonth() + 6)
-    return defaultDeadline
-  }
-
-  private extractStipend(content: string): number | undefined {
-    const stipendPatterns = [
-      /€(\d{1,3}(?:,\d{3})*)/,
-      /\$(\d{1,3}(?:,\d{3})*)/,
-      /(\d{1,3}(?:,\d{3})*)\s*(?:euro|eur|dollar|usd)/i
-    ]
-
-    for (const pattern of stipendPatterns) {
-      const match = content.match(pattern)
-      if (match) {
-        const amount = parseInt(match[1].replace(/,/g, ''))
-        if (amount > 100 && amount < 10000) { // Reasonable monthly stipend range
-          return amount
-        }
-      }
-    }
-
-    return undefined
-  }
-
-  private extractTuitionInfo(content: string): boolean {
-    const tuitionKeywords = ['tuition covered', 'tuition free', 'no tuition', 'tuition waiver', 'full funding']
-    const lowerContent = content.toLowerCase()
-    return tuitionKeywords.some(keyword => lowerContent.includes(keyword))
-  }
-
-  private extractTravelInfo(content: string): boolean {
-    const travelKeywords = ['travel allowance', 'flight', 'airfare', 'travel support', 'transportation']
-    const lowerContent = content.toLowerCase()
-    return travelKeywords.some(keyword => lowerContent.includes(keyword))
-  }
-
-  private extractEligibility(content: string): string {
-    // Extract the first sentence or paragraph that mentions eligibility
-    const eligibilityPatterns = [
-      /eligibility:?\s*([^.]+\.)/i,
-      /eligible:?\s*([^.]+\.)/i,
-      /requirements:?\s*([^.]+\.)/i
-    ]
-
-    for (const pattern of eligibilityPatterns) {
-      const match = content.match(pattern)
-      if (match) {
-        return match[1].trim()
-      }
-    }
-
-    return content.substring(0, 200) + '...'
-  }
-
-  private extractRequirements(content: string): string[] {
-    const commonRequirements = [
-      'bachelor degree', 'master degree', 'english proficiency', 'gpa requirement',
-      'research proposal', 'letters of recommendation', 'personal statement',
-      'cv', 'transcript', 'language test'
-    ]
-
-    const lowerContent = content.toLowerCase()
-    return commonRequirements.filter(req => lowerContent.includes(req))
-  }
-
-  private generateTags(content: string, domain: string): string[] {
-    const tags: string[] = []
-    const lowerContent = content.toLowerCase()
-
-    // Funding type tags
-    if (lowerContent.includes('full') && (lowerContent.includes('fund') || lowerContent.includes('scholarship'))) {
-      tags.push('fully-funded')
-    }
-    if (lowerContent.includes('partial')) {
-      tags.push('partial-funding')
-    }
-
-    // Prestige tags
-    if (['daad.de', 'fulbrightonline.org', 'chevening.org'].includes(domain)) {
-      tags.push('prestigious')
-    }
-
-    // Type tags
-    if (lowerContent.includes('research')) {
-      tags.push('research')
-    }
-    if (lowerContent.includes('international')) {
-      tags.push('international')
-    }
-
-    return tags
-  }
-
-  private calculateConfidence(raw: RawScholarshipData): number {
-    let confidence = 0.5 // Base confidence
-
-    // Domain trust score
-    const trustedDomains = ['daad.de', 'fulbrightonline.org', 'chevening.org', 'commonwealthscholarships.org']
-    if (trustedDomains.includes(raw.domain)) {
-      confidence += 0.3
-    }
-
-    // Content quality score
-    if (raw.content.length > 100) {
-      confidence += 0.1
-    }
-    if (raw.content.includes('deadline') || raw.content.includes('apply')) {
-      confidence += 0.1
-    }
-
-    return Math.min(confidence, 1.0)
-  }
-
-  private validateScholarshipData(data: NormalizedScholarshipData): boolean {
-    return !!(
-      data.name &&
-      data.sourceUrl &&
-      data.domain &&
-      data.country &&
-      data.degreeLevels.length > 0 &&
-      data.deadline &&
-      data.deadline > new Date()
-    )
-  }
-
-  private capitalizeCountry(country: string): string {
-    return country.charAt(0).toUpperCase() + country.slice(1).toLowerCase()
+/**
+ * Checks if a given hostname is in the allowlisted official domains.
+ * This function will call the /api/domains endpoint.
+ * @param hostname - The hostname to check.
+ * @returns A Promise that resolves to true if the domain is official, false otherwise.
+ */
+async function isDomainOfficial(hostname: string): Promise<boolean> {
+  try {
+    const response = await fetch(`/api/meta/domains/verify?domain=${hostname}`, { method: 'HEAD' });
+    return response.ok; // 200 OK means it's trusted
+  } catch (error) {
+    console.error(`Error checking domain official status for ${hostname}:`, error);
+    return false;
   }
 }

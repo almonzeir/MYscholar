@@ -16,29 +16,40 @@ interface LogEntry {
 class Logger {
   private isDevelopment = process.env.NODE_ENV === 'development'
   private isProduction = process.env.NODE_ENV === 'production'
+  private visitedObjects: Set<any> = new Set();
 
   private sanitizeData(data: any): any {
-    if (typeof data !== 'object' || data === null) {
-      return data
-    }
-
     const sensitiveKeys = [
       'password', 'token', 'key', 'secret', 'auth', 'credential',
       'api_key', 'apikey', 'authorization', 'bearer'
     ]
 
-    const sanitized = { ...data }
-    
-    for (const key in sanitized) {
+    const replacer = (key: string, value: any) => {
+      if (typeof value === 'object' && value !== null) {
+        // Handle circular references
+        if (this.visitedObjects.has(value)) {
+          return '[Circular]'
+        }
+        this.visitedObjects.add(value)
+      }
+
       const lowerKey = key.toLowerCase()
       if (sensitiveKeys.some(sensitive => lowerKey.includes(sensitive))) {
-        sanitized[key] = '[REDACTED]'
-      } else if (typeof sanitized[key] === 'object') {
-        sanitized[key] = this.sanitizeData(sanitized[key])
+        return '[REDACTED]'
       }
+      return value
     }
 
-    return sanitized
+    // Reset visited objects for each new sanitization call
+    this.visitedObjects = new Set();
+
+    try {
+      // Stringify and parse to handle circular references and deep clone
+      return JSON.parse(JSON.stringify(data, replacer));
+    } catch (e) {
+      // Fallback for errors during JSON serialization (e.g., very complex objects)
+      return '[Serialization Error]';
+    }
   }
 
   private log(level: LogLevel, message: string, context?: Record<string, any>, error?: Error) {

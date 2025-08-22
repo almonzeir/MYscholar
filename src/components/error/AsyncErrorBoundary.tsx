@@ -2,9 +2,9 @@
 
 import React, { Component, ErrorInfo, ReactNode } from 'react'
 import { logger } from '@/lib/utils/logger'
-import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
+import Button from '@/components/ui/Button'
+import Card from '@/components/ui/Card'
+import Skeleton from '@/components/ui/Skeleton'
 import { cn } from '@/lib/utils'
 
 interface Props {
