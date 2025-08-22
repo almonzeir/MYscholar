@@ -9,15 +9,35 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
+      - DATABASE_URL=postgresql://username:password@postgres:5432/scholarship_platform
       - REDIS_URL=redis://redis:6379
       - NEXTAUTH_URL=http://localhost:3000
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-$(openssl rand -base64 32)}
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
     networks:
       - scholarship-network
 
-  
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=username
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=scholarship_platform
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - scholarship-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U username -d scholarship_platform"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
@@ -27,6 +47,11 @@ services:
       - redis_data:/data
     networks:
       - scholarship-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   nginx:
     image: nginx:alpine
@@ -43,6 +68,7 @@ services:
 
 volumes:
   redis_data:
+  postgres_data:
 
 networks:
   scholarship-network:
