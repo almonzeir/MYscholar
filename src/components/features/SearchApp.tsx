@@ -53,29 +53,6 @@ export function SearchApp() {
       setTotal(data.total || 0)
     } catch (error) {
       console.error('Error fetching search results:', error)
-      // Mock data for development
-      setResults([
-        {
-          id: '1',
-          name: 'Global Excellence Scholarship',
-          sourceUrl: 'https://example.com/scholarship1',
-          domain: 'University of Excellence',
-          country: 'Canada',
-          degreeLevels: ['Master', 'PhD'],
-          fields: ['Computer Science', 'Engineering'],
-          deadline: new Date('2024-12-31'),
-          tuitionCovered: true,
-          stipend: 25000,
-          travelSupport: true,
-          eligibilityText: 'Open to international students',
-          requirements: ['GPA >= 3.5', 'IELTS 7.0'],
-          tags: ['STEM', 'International'],
-          confidence: 0.95,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        }
-      ])
-      setTotal(1)
     } finally {
       setLoading(false)
     }
@@ -95,22 +72,6 @@ export function SearchApp() {
         onProfileChange={handleProfileChange} 
         onSearch={handleSearch} 
       />
-      
-      {/* Additional Search Input */}
-      <div className="glass-card p-4">
-        <div className="flex gap-3">
-          <Input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Additional keywords (optional)..."
-            className="flex-1"
-          />
-          <Button onClick={handleSearch} disabled={loading}>
-            {loading ? 'Searching...' : 'Search'}
-          </Button>
-        </div>
-      </div>
       
       {/* Additional Search Input */}
       <div className="glass-card p-4">

@@ -17,7 +17,19 @@ services:
     networks:
       - scholarship-network
 
-  
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      - POSTGRES_DB=scholarship_platform
+      - POSTGRES_USER=username
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - scholarship-network
 
   redis:
     image: redis:7-alpine
@@ -43,6 +55,7 @@ services:
 
 volumes:
   redis_data:
+  postgres_data:
 
 networks:
   scholarship-network:

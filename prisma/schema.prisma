@@ -1,0 +1,41 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Scholarship {
+  id              String    @id @default(cuid())
+  name            String
+  sourceUrl       String
+  domain          String
+  country         String
+  degreeLevels    String[]
+  fields          String[]
+  deadline        DateTime?
+  stipend         Int?
+  tuitionCovered  Boolean
+  travelSupport   Boolean
+  eligibilityText String
+  requirements    String[]
+  tags            String[]
+  confidence      Float
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  eligibilityRules EligibilityRule[]
+}
+
+model EligibilityRule {
+  id          String @id @default(cuid())
+  rule        String
+  value       String?
+  allowed     String[]
+  values      String[]
+  optional    Boolean?
+  scale       String?
+  scholarship   Scholarship @relation(fields: [scholarshipId], references: [id])
+  scholarshipId String
+}
