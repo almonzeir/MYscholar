@@ -1,4 +1,11 @@
 import '@testing-library/jest-dom'
+import { Request, Response } from 'node-fetch'
+import { TextEncoder, TextDecoder } from 'util'
+
+global.Request = Request
+global.Response = Response
+global.TextEncoder = TextEncoder
+global.TextDecoder = TextDecoder
 
 // Mock matchMedia
 Object.defineProperty(window, 'matchMedia', {

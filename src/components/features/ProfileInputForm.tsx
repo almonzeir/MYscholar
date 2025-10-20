@@ -3,6 +3,7 @@ import { UserProfile } from '@/types/profile'
 import Button from '@/components/ui/Button'
 import Select from '@/components/ui/Select'
 import Input from '@/components/ui/Input'
+import { COUNTRIES } from '@/lib/constants'
 import MultiSelect from '@/components/ui/MultiSelect'
 import FormSection from '@/components/ui/FormSection'
 
@@ -167,19 +168,21 @@ export function ProfileInputForm({ profile, onProfileChange, onSearch }: Profile
         description="Your background and current situation"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Input
+          <Select
             label="Nationality"
+            options={COUNTRIES}
             value={profile.nationality}
-            onChange={(e) => handleInputChange('nationality', e.target.value)}
-            placeholder="e.g., Indian, American, German"
+            onChange={(value) => handleInputChange('nationality', value)}
+            placeholder="Select your nationality"
             helperText="Your country of citizenship"
           />
 
-          <Input
+          <Select
             label="Current Country of Residence"
+            options={COUNTRIES}
             value={profile.currentCountryOfResidence}
-            onChange={(e) => handleInputChange('currentCountryOfResidence', e.target.value)}
-            placeholder="e.g., Canada, United Kingdom"
+            onChange={(value) => handleInputChange('currentCountryOfResidence', value)}
+            placeholder="Select your country of residence"
             helperText="Where you currently live"
           />
         </div>

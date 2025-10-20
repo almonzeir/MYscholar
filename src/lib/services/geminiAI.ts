@@ -60,6 +60,7 @@ export const geminiAI = {
       // Add ID and source_domain if not already present (from specification)
       scholarship.id = scholarship.id || page.hash;
       scholarship.source_domain = scholarship.source_domain || new URL(page.url).hostname;
+      scholarship.sourceUrl = page.url;
       scholarship.updatedAt = new Date(); // Ensure updatedAt is always current
 
       return scholarship;
