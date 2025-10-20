@@ -34,6 +34,7 @@ class GlobalErrorHandler {
   private isInitialized = false
 
   initialize() {
+    if (typeof window === 'undefined') return
     if (this.isInitialized) return
 
     // Handle unhandled promise rejections
@@ -50,6 +51,7 @@ class GlobalErrorHandler {
   }
 
   cleanup() {
+    if (typeof window === 'undefined') return
     window.removeEventListener('unhandledrejection', this.handleUnhandledRejection)
     window.removeEventListener('error', this.handleGlobalError)
     window.removeEventListener('react-error', this.handleReactError as EventListener)
@@ -355,27 +357,27 @@ class GlobalErrorHandler {
   }
 }
 
-// Create singleton instance
-// export const globalErrorHandler = new GlobalErrorHandler()
+const globalErrorHandlerInstance = new GlobalErrorHandler()
 
-// Utility function to dispatch React errors to global handler
-// export const dispatchReactError = (error: Error, errorInfo: any, component?: string) => {
-//   const event = new CustomEvent('react-error', {
-//     detail: { error, errorInfo, component }
-//   })
-//   window.dispatchEvent(event)
-// }
+export const globalErrorHandler = globalErrorHandlerInstance
 
-// Utility function for manual error reporting
-// export const reportError = (
-//   error: Error | string,
-//   context?: Partial<ErrorContext>,
-//   options?: {
-//     category?: ErrorReport['category']
-//     severity?: ErrorReport['severity']
-//     recoverable?: boolean
-//   }
-// ) => {
-//   const errorObj = typeof error === 'string' ? new Error(error) : error
-//   return globalErrorHandler.captureError(errorObj, { context, ...options })
-// }
+export const dispatchReactError = (error: Error, errorInfo: any, component?: string) => {
+  if (typeof window === 'undefined') return
+  const event = new CustomEvent('react-error', {
+    detail: { error, errorInfo, component }
+  })
+  window.dispatchEvent(event)
+}
+
+export const reportError = (
+  error: Error | string,
+  context?: Partial<ErrorContext>,
+  options?: {
+    category?: ErrorReport['category']
+    severity?: ErrorReport['severity']
+    recoverable?: boolean
+  }
+) => {
+  const errorObj = typeof error === 'string' ? new Error(error) : error
+  return globalErrorHandler.captureError(errorObj, { context, ...options })
+}

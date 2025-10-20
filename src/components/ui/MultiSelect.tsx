@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useState } from 'react'
 import { cn } from '@/lib/utils'
 import Chip from './Chip'
@@ -84,6 +86,10 @@ export default function MultiSelect({
       )}
 
       {/* Selected Values Display */}
+      {selectedValues.length === 0 && (
+        <p className="text-sm text-white/50 mb-3">{placeholder}</p>
+      )}
+
       {selectedValues.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-3">
           {getSelectedLabels().map((label, index) => (

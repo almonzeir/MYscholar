@@ -1,7 +1,7 @@
 import React from 'react';
 import { ScholarshipRepository } from '@/lib/repositories/ScholarshipRepository';
 import { Scholarship } from '@/types/database';
-import { Card } from '@/components/ui/Card';
+import Card from '@/components/ui/Card';
 
 export default async function ScholarshipsPage() {
   const scholarshipRepository = new ScholarshipRepository();
