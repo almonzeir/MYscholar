@@ -1,8 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import { globalErrorHandler, ErrorReport, dispatchReactError } from '@/lib/error/errorHandler'
-import { logger } from '@/lib/utils/logger'
+import { ErrorReport, dispatchReactError } from '@/lib/error/errorHandler'
 import Toast from '@/components/ui/Toast'
 
 interface ErrorContextValue {

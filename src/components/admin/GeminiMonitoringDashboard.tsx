@@ -5,20 +5,20 @@ import Card from '@/components/ui/Card'
 import Chip from '@/components/ui/Chip'
 import Button from '@/components/ui/Button'
 import Progress from '@/components/ui/Progress'
-import { ErrorBoundary } from '@/components/error/ErrorBoundary'
+import ErrorBoundary from '@/components/error/ErrorBoundary'
 import { useError } from '@/components/error/ErrorProvider'
-import { 
-  Activity, 
-  AlertTriangle, 
-  CheckCircle, 
-  Clock, 
-  Database, 
-  RefreshCw, 
-  TrendingUp, 
+import {
+  Activity,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  Database,
+  RefreshCw,
+  TrendingUp,
   Zap,
   BarChart3,
   Settings
-} from 'lucide-react'
+} from '@/components/icons'
 
 interface GeminiStats {
   service: string

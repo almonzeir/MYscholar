@@ -1,8 +1,9 @@
-import React, { useState } from 'react'
+'use client'
+
+import React from 'react'
 import { UserProfile } from '@/types/profile'
 import Button from '@/components/ui/Button'
 import Select from '@/components/ui/Select'
-import Input from '@/components/ui/Input'
 import { COUNTRIES } from '@/lib/constants'
 import MultiSelect from '@/components/ui/MultiSelect'
 import FormSection from '@/components/ui/FormSection'
